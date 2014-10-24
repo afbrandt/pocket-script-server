@@ -25,7 +25,20 @@ app.get('/objects/', function(req, res) {
 })
 
 app.post('/object/', function(req, res) {
-  res.send(202)
+  req.pipe(req.busboy)
+  req.busboy.on('file', function(fieldName, file, fileName) {
+    console.log("Uploading: " + fileName)
+    s3.putObject({Bucket: 'pocketserver-development', Body: file, Key: 'AKIAIJF3XVWOLUX32UTA'}, function(err, data) {
+      if (err) {
+        console.log(err)
+        res.send('error')
+      }
+      else {
+        res.send('success!')
+        console.log('success')
+      }   
+    })
+  })
 })
 
 app.listen(3000)
