@@ -7,7 +7,7 @@ var express = require('express'),
 var app = express()
 AWS.config.loadFromPath('./awsConfig.json')
 
-app.use(bodyParser())
+app.use(bodyParser({limit: '50mb'}))
 app.use(busboy())
 
 var db = mongoskin.db('mongodb://@localhost:27017/test', {safe:true})
@@ -25,22 +25,36 @@ app.get('/objects/', function(req, res) {
 })
 
 app.post('/object/', function(req, res) {
+  console.log('processing POST')
+  req.pipe(req.busboy)
   req.busboy.on('file', function(fieldName, file, fileName) {
-    file.on('data', function(data) {
-      console.log("Uploading: " + fileName + " size: " + data.length)
-      s3.putObject({Bucket: 'pocketserver-development', Body: data, Key: 'AKIAIJF3XVWOLUX32UTA', ContentLength: data.length}, function(err, data) {
+    //console.log(file.length)
+    
+    // Create the initial array containing the stream's chunks
+    file.fileRead = [];
+
+    file.on('data', function(chunk) {
+      // Push chunks into the fileRead array
+      this.fileRead.push(chunk);
+    });
+    
+    file.on('end', function() {
+      // Concat the chunks into a Buffer
+      var finalBuffer = Buffer.concat(this.fileRead);
+      
+       s3.putObject({Bucket: 'pocketserver-development', Body: finalBuffer, Key: fileName, ContentLength: finalBuffer.length}, function(err, data) {
         if (err) {
           console.log(err)
-          res.send('error')
+          res.send(400)
         }
         else {
-          res.send('success!')
-          console.log('success')
+          //res.send(201)
+          console.log('success!')
         }   
       })
     })
   })
-  req.pipe(req.busboy)
+  res.send(201)
 })
 
 app.listen(3000)
