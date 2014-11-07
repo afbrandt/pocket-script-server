@@ -31,28 +31,39 @@ app.post('/object/', function(req, res) {
   console.log('processing POST')
   var orderLabel
   
-  var error = null;
+  var error = null
   req.busboy.on('field', function(fieldName, val, fieldNameTruncated, valTruncated) {
     if (fieldName === 'deviceToken') {
       console.log('field: ' + fieldName + ' value: ' + val)
+      db.collection('orders').insert({deviceToken : val}, {}, function(e, results) {
+        if (e) {
+          error = e
+        } else {
+          console.log(results)
+          var label = results[0]._id
+          orderLabel = results[0]._id
+          console.log(orderLabel)
+          console.log("label: " + label)
+        }
+      })
     }
   })
   req.busboy.on('file', function(fieldName, file, fileName) {
     //console.log(file.length)
     
     // Create the initial array containing the stream's chunks
-    file.fileRead = [];
+    file.fileRead = []
 
     file.on('data', function(chunk) {
       // Push chunks into the fileRead array
-      this.fileRead.push(chunk);
+      this.fileRead.push(chunk)
     });
     
     file.on('end', function() {
       // Concat the chunks into a Buffer
-      var finalBuffer = Buffer.concat(this.fileRead);
+      var finalBuffer = Buffer.concat(this.fileRead)
       
-       s3.putObject({Bucket: 'pocketserver-development', Body: finalBuffer, Key: fileName, ContentLength: finalBuffer.length}, function(err, data) {
+       s3.putObject({Bucket: 'pocketserver-development', Body: finalBuffer, Key: orderLabel + '/' + fileName, ContentLength: finalBuffer.length}, function(err, data) {
         if (err) {
           console.log(err)
           error = err
